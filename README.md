@@ -43,6 +43,23 @@ Add to `claude_desktop_config.json`:
 }
 ```
 
+## GUI
+
+A small Tkinter desktop app is included for ad-hoc synthesis without wiring an
+MCP client by hand. Launch:
+
+```bash
+text-to-audio-gui
+```
+
+It spawns the MCP server as a stdio subprocess on startup, keeps a single
+`ClientSession` open for the window's lifetime, and exposes a paste box, a
+voice combobox (curated list, free-text override), a rate field, a Synthesize
+button, and an "Open output folder" shortcut. The resulting MP3 path is shown
+in the window after each synthesis.
+
+The GUI honours the same `TTS_*` environment variables as the server.
+
 ## Configuration
 
 All optional, set via environment variables:

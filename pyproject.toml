@@ -23,6 +23,7 @@ dev = [
 
 [project.scripts]
 text-to-audio-mcp = "text_to_audio_mcp.server:main"
+text-to-audio-gui = "text_to_audio_mcp.gui:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/text_to_audio_mcp"]

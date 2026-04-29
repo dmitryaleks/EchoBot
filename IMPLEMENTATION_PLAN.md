@@ -130,3 +130,64 @@ cd C:/Projects/TextToAudio
 - Alternate engines (pyttsx3 / OpenAI TTS / Piper) — leave engine pluggable but only ship edge-tts.
 - Caching identical text→audio pairs.
 - Web/HTTP transport for MCP (stdio is sufficient for the local-CLI use case the sketch implies).
+
+---
+
+# GUI Tool — Implementation Plan
+
+## Context
+
+Add a desktop GUI on top of the MCP server: paste text, hit Synthesize, the
+GUI talks to the local MCP server as a real client and surfaces the resulting
+MP3's path. Framework: Tkinter (stdlib, no new deps).
+
+## Architecture
+
+- GUI spawns `python -m text_to_audio_mcp.server` as a stdio subprocess via
+  `mcp.client.stdio.stdio_client` and keeps a single `ClientSession` open for
+  the window's lifetime.
+- A worker thread owns the asyncio loop and the long-lived session. Synthesize
+  clicks dispatch coroutines via `asyncio.run_coroutine_threadsafe`; results
+  marshal back to Tk via `root.after(0, …)`.
+- Tool called: `text_to_audio(text, voice?, rate?)`. The result dict's
+  `output_path` is shown in the window.
+
+## File-level changes
+
+| Path | Action | Purpose |
+|---|---|---|
+| `src/text_to_audio_mcp/gui.py` | create | `MCPClient` worker + Tk `App`. Exports `main()`. |
+| `pyproject.toml` | modify | Add console script `text-to-audio-gui`. |
+| `README.md` | modify | New "GUI" section. |
+| `tests/test_gui.py` | create | Module import + public surface assertions. |
+
+## Implementation steps
+
+### Phase 1 — `MCPClient` + `App` (`gui.py`)
+- [x] **G1.1** `MCPClient` with `start()`, `stop()`, `synthesize(text, voice, rate, timeout)` returning the parsed tool result dict.
+- [x] **G1.2** Worker thread runs `asyncio.run(_main)`, holding `stdio_client` + `ClientSession` open until a stop-event fires.
+- [x] **G1.3** `synthesize()` schedules `session.call_tool("text_to_audio", ...)` via `run_coroutine_threadsafe` and parses the JSON text content.
+- [x] **G1.4** Tk `App` with voice combobox, rate entry, scrolled paste box, Synthesize button, status + output labels, "Open output folder" button.
+- [x] **G1.5** Synthesize click runs in a worker thread; result is marshalled back via `root.after(0, …)`. Errors land in the status label.
+- [x] **G1.6** `WM_DELETE_WINDOW` calls `MCPClient.stop()` so the spawned server is reaped on close.
+
+### Phase 2 — Packaging + docs
+- [x] **G2.1** Added `text-to-audio-gui = "text_to_audio_mcp.gui:main"` console script.
+- [x] **G2.2** Reinstalled (`pip install -e .`); `text-to-audio-gui.exe` registered.
+- [x] **G2.3** README "GUI" section documents launch, behavior, and shared `TTS_*` env vars.
+
+### Phase 3 — Tests
+- [x] **G3.1** `tests/test_gui.py` asserts the public surface (`App`, `MCPClient`, `main`, `CURATED_VOICES`).
+- [x] **G3.2** Negative test: `MCPClient.synthesize()` before `start()` raises `RuntimeError("not ready")`.
+
+### Phase 4 — Verification
+- [x] **G4.1** Headless integration: spun up `MCPClient`, called `synthesize()` twice — server ready in 2.25 s, first call 0.58 s, second call 0.28 s (session-reuse confirmed). Both MP3s written to `output/`.
+- [x] **G4.2** `pytest -m "not network"` → 11 passed (9 existing + 2 GUI), 1 deselected.
+- [ ] **G4.3** Manual GUI smoke (visual): launch `text-to-audio-gui`, paste text, click Synthesize, confirm path label updates and Open-folder works. *Pending user verification — not runnable headless from this session.*
+
+## Out of scope (intentional)
+
+- No "Load file" button — brief specifies pasting.
+- No in-app playback. Surface the path; user opens it themselves.
+- No live `list_voices` RPC at startup. Voice combobox is curated + free-text.
+- No tray icon, theming, or window-state persistence.
