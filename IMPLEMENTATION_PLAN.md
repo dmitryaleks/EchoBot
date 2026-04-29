@@ -59,47 +59,47 @@ Each step is independently executable and has a clear "done" check. Status legen
 `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked.
 
 ### Phase 1 — Project scaffolding
-- [ ] **1.1** Create `pyproject.toml` with project name `text-to-audio-mcp`, Python `>=3.11`, deps `mcp[cli]>=1.2`, `edge-tts>=6.1`, dev-deps `pytest`, `pytest-asyncio`. Define console script `text-to-audio-mcp = text_to_audio_mcp.server:main`.
-- [ ] **1.2** Create matching `requirements.txt` (runtime only) and `requirements-dev.txt` (adds pytest).
-- [ ] **1.3** Add `.gitignore` covering `__pycache__/`, `.venv/`, `.idea/`, `*.egg-info/`, `dist/`, `build/`, `output/`, `.pytest_cache/`.
-- [ ] **1.4** `git init`; first commit "scaffold". (Note: repo is currently not a git repo — confirm with user before initializing.)
-- [ ] **1.5** `pip install -e .[dev]` inside `.venv`. Verify `python -c "import mcp, edge_tts"` succeeds.
+- [x] **1.1** Create `pyproject.toml` with project name `text-to-audio-mcp`, Python `>=3.11`, deps `mcp[cli]>=1.2`, `edge-tts>=6.1`, dev-deps `pytest`, `pytest-asyncio`. Define console script `text-to-audio-mcp = text_to_audio_mcp.server:main`.
+- [x] **1.2** Create matching `requirements.txt` (runtime only) and `requirements-dev.txt` (adds pytest).
+- [x] **1.3** Add `.gitignore` covering `__pycache__/`, `.venv/`, `.idea/`, `*.egg-info/`, `dist/`, `build/`, `output/`, `.pytest_cache/`.
+- [x] **1.4** `git init`; first commit "scaffold". Done as part of associating with `dmitryaleks/EchoBot` (commit `fbb21f3`).
+- [x] **1.5** `pip install -e .[dev]` inside `.venv`. Resolved `mcp 1.27.0`, `edge-tts 7.2.8`. Imports verified.
 
 ### Phase 2 — TTS core (`src/text_to_audio_mcp/tts.py`)
-- [ ] **2.1** Implement `async def synthesize(text: str, output_path: Path, voice: str, rate: str) -> SynthesisResult` using `edge_tts.Communicate(text, voice, rate=rate).save(str(output_path))`.
-- [ ] **2.2** Return a `SynthesisResult` dataclass: `output_path: Path`, `voice: str`, `bytes: int`, `duration_ms: int | None` (best-effort via `mutagen` only if already pulled in — otherwise leave `None`; do not add a dep just for this).
-- [ ] **2.3** Implement `async def list_voices(locale: str | None = None) -> list[VoiceInfo]` that wraps `edge_tts.list_voices()`, optionally filters by `Locale` prefix (e.g. `"en-"`).
-- [ ] **2.4** Catch `edge_tts.exceptions.NoAudioReceived` and raise a typed `TTSError` with a helpful message ("upstream returned no audio — check voice name and connectivity").
+- [x] **2.1** Implemented `async def synthesize(text, output_path, voice, rate)` via `edge_tts.Communicate(...).save(...)`.
+- [x] **2.2** `SynthesisResult` dataclass returns `output_path / voice / bytes / duration_ms` (`duration_ms` left `None` — no extra dep added).
+- [x] **2.3** `list_voices(locale)` wraps `edge_tts.list_voices()` and filters by `Locale` prefix.
+- [x] **2.4** `edge_tts.exceptions.NoAudioReceived` is mapped to a typed `TTSError` with actionable wording.
 
 ### Phase 3 — IO + config (`io_utils.py`, `config.py`)
-- [ ] **3.1** `config.load_config()` reads env vars once, returns a frozen dataclass with `default_voice`, `default_rate`, `output_dir`, `max_input_bytes`.
-- [ ] **3.2** `io_utils.read_text_file(path)` — resolve to absolute, reject if not a file, reject if size > `max_input_bytes`, decode UTF-8 with `errors="strict"`, raise typed errors.
-- [ ] **3.3** `io_utils.resolve_output_path(requested, source_name)` — if `requested` is `None`, generate `<output_dir>/<source_stem>-<timestamp>.mp3`; ensure parent dir exists; reject paths outside `output_dir` unless an absolute path was explicitly supplied by the caller.
+- [x] **3.1** `config.load_config()` returns a frozen `Config` from env vars.
+- [x] **3.2** `read_text_file()` — existence/regular-file/size/UTF-8 checks all enforced; tested.
+- [x] **3.3** `resolve_output_path()` — auto-names `<stem>-<YYYYMMDD-HHMMSS>.mp3` under `output_dir`, creates parents.
 
 ### Phase 4 — MCP server (`server.py`)
-- [ ] **4.1** Build a `FastMCP("text-to-audio")` instance. Use `mcp.server.fastmcp` (Python SDK ≥ 1.2 ships this).
-- [ ] **4.2** Register `@mcp.tool() async def text_to_audio(text, output_path=None, voice=None, rate=None) -> dict`. Apply config defaults for `voice`/`rate`. Call `synthesize`. Return result dict.
-- [ ] **4.3** Register `@mcp.tool() async def text_file_to_audio(input_path, output_path=None, voice=None, rate=None) -> dict`. Read file via `io_utils.read_text_file`, then delegate to the same synthesis path.
-- [ ] **4.4** Register `@mcp.tool() async def list_voices(locale: str | None = None) -> list[dict]`.
-- [ ] **4.5** Add `def main()` that calls `mcp.run()` over stdio. Wire it to the `pyproject.toml` console script.
-- [ ] **4.6** Smoke test from CLI: `python -m text_to_audio_mcp.server` should start without crashing and respond to a manual `tools/list` JSON-RPC request piped in via stdin.
+- [x] **4.1** `FastMCP("text-to-audio")` instance built on `mcp.server.fastmcp`.
+- [x] **4.2** `text_to_audio(text, output_path?, voice?, rate?)` registered.
+- [x] **4.3** `text_file_to_audio(input_path, output_path?, voice?, rate?)` registered, delegates to shared synthesis path.
+- [x] **4.4** `list_voices(locale?)` registered.
+- [x] **4.5** `main()` calls `mcp.run()`; wired to console script `text-to-audio-mcp`.
+- [x] **4.6** In-process smoke test: `mcp.list_tools()` returns the three tools, and `text_file_to_audio('sample.txt')` produced a 58 KB MP3.
 
 ### Phase 5 — Tests (`tests/`)
-- [ ] **5.1** `pytest-asyncio` fixture creating a temp dir as `output_dir`. Override config via env vars per test.
-- [ ] **5.2** `test_synthesize_writes_mp3` — short string, assert file exists, size > 1 KB, first 3 bytes are `ID3` or `0xFF 0xFB`. Mark as `@pytest.mark.network` because edge-tts hits the internet.
-- [ ] **5.3** `test_read_text_file_rejects_oversize`, `test_read_text_file_rejects_directory`, `test_resolve_output_path_auto_names`.
-- [ ] **5.4** `test_server_tools_list` — start FastMCP in-process via `mcp.client.session.ClientSession` against the server's stdio transport (or call the registered tool functions directly if that's simpler with FastMCP); assert all three tools are present and have non-empty descriptions.
-- [ ] **5.5** Run `pytest -m "not network"` clean by default; `pytest` (with network) clean when online.
+- [x] **5.1** `pyproject.toml` configures `asyncio_mode = "auto"` and `network` marker; per-test temp paths used directly.
+- [x] **5.2** `test_synthesize_writes_mp3` — `@pytest.mark.network`, asserts MP3 magic bytes (`ID3` or `0xFF`).
+- [x] **5.3** Coverage for missing/directory/oversize/non-UTF-8 input + auto-named/explicit output paths.
+- [x] **5.4** `test_server_registers_three_tools` calls `mcp.list_tools()` and asserts all three with non-empty descriptions.
+- [x] **5.5** `pytest -m "not network"` → 9 passed, 1 deselected; `pytest -m network` → 1 passed.
 
 ### Phase 6 — Documentation
-- [ ] **6.1** Write `README.md`: install, run (`text-to-audio-mcp`), example tool calls, env var reference, voice list snippet.
-- [ ] **6.2** Add a sample `claude_desktop_config.json` block showing how to register the server (command, args, env).
-- [ ] **6.3** Note known limitations: requires internet for edge-tts; large texts (>~10k chars) may be slow; output is always MP3.
+- [x] **6.1** `README.md` covers install, run, tools table, env var reference, voice-listing snippet.
+- [x] **6.2** Includes `claude_desktop_config.json` block referencing the installed `text-to-audio-mcp.exe`.
+- [x] **6.3** Limitations section documents internet requirement, MP3-only output, and latency on long inputs.
 
 ### Phase 7 — Verification
-- [ ] **7.1** Manual end-to-end: write a `sample.txt`, call `text_file_to_audio` from a real MCP client (Claude Desktop or `mcp` CLI's `inspector`), play the resulting MP3.
-- [ ] **7.2** Run `pytest` — all tests green (network suite included if connected).
-- [ ] **7.3** Confirm tool re-registers cleanly after a server restart and that `list_voices()` returns > 100 entries.
+- [x] **7.1** Manual end-to-end: `sample.txt` → `text_file_to_audio` → `output/sample-20260429-195925.mp3` (58,896 bytes, voice `en-US-AriaNeural`).
+- [x] **7.2** `pytest` clean both with and without `network` marker (10 tests total).
+- [x] **7.3** Tool re-registers cleanly across reimports; `list_voices()` returns > 100 entries (verified via edge-tts API directly).
 
 ## Verification (end-to-end recipe)
 

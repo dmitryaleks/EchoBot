@@ -1,0 +1,1 @@
+Hello from the text-to-audio MCP server. This is a smoke test that exercises the full file-to-MP3 path through edge-tts.
